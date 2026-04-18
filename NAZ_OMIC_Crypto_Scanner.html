@@ -36,6 +36,13 @@ select:focus{border-color:var(--teal)}
 .scbtn:hover:not(:disabled){background:#1e3465}
 .scbtn:disabled{opacity:.4;cursor:not-allowed}
 .diagbtn{width:100%;padding:7px;background:#2a1a08;color:var(--amber);border:1px solid #7a4a0a;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
+.tvbtn{width:100%;padding:8px;background:#132040;color:#60a5fa;border:1px solid #1e3a7a;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;display:none}
+.tvbtn:hover{background:#1a2e5a}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f3020;color:#4ade80;border:1px solid #155215;padding:10px 22px;border-radius:20px;font-size:12px;font-weight:700;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.tvbtn{width:100%;padding:8px;background:#0e2318;color:#4ade80;border:1px solid #155215;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;display:none}
+.tvbtn:hover{background:#162e20}
+.tvbtn.copied{background:#071a07;color:#2dd4bf;border-color:#2dd4bf}
 .diagbtn:hover{background:#3a2510}
 .prog{height:3px;background:var(--border);border-radius:2px;margin-top:7px;overflow:hidden}
 .pf{height:100%;background:var(--teal);transition:width .2s;width:0}
@@ -73,6 +80,7 @@ td{padding:6px 11px;font-size:12px;vertical-align:middle;white-space:nowrap}
 </style>
 </head>
 <body>
+<div class="toast" id="toast"></div>
 <div class="header">
   <button onclick="toggleSide()" id="sideBtn" style="background:var(--btn);border:1px solid var(--border2);color:var(--text2);width:32px;height:28px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0">&#9776;</button>
   <div class="logo">Naz <span>Omic</span> Crypto Scanner</div>
@@ -115,6 +123,8 @@ td{padding:6px 11px;font-size:12px;vertical-align:middle;white-space:nowrap}
   <div class="ss">
     <button class="scbtn" id="scanBtn" onclick="startScan()">&#9654;  RUN SCAN</button>
     <button class="diagbtn" onclick="runDiag()">&#128300; DIAGNOSE BTCUSDT</button>
+    <button class="tvbtn" id="tvBtn" onclick="copyToTV()">&#128203; COPY TO TRADINGVIEW</button>
+    <button class="tvbtn" id="tvBtn" onclick="copyToTV()">&#128203; COPY TO TRADINGVIEW</button>
     <div class="prog"><div class="pf" id="pBar"></div></div>
     <div class="sr"><span>Pairs</span><span class="sv" id="sPairs">Loading...</span></div>
     <div class="sr"><span>Scanned</span><span class="sv" id="sScan">0 / 0</span></div>
@@ -605,6 +615,8 @@ function startScan(){
   if(!allPairs.length){alert('Pairs not loaded yet.');return;}
   scanning=true;results=[];
   document.getElementById('diagPanel').classList.remove('show');
+  document.getElementById('tvBtn').style.display='none';
+  document.getElementById('tvBtn').style.display='none';
   var btn=document.getElementById('scanBtn');
   btn.disabled=true;btn.textContent='Scanning...';
   setBadge('SCANNING','b-scn');
@@ -681,6 +693,88 @@ function renderTable(){
 }
 
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+
+function copyToTV(){
+  if(!results.length){return;}
+  // TradingView watchlist import format: EXCHANGE:SYMBOL one per line
+  var lines=results.map(function(r){return 'BINANCE:'+r.sym;});
+  var text=lines.join('\n');
+  // Copy to clipboard
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){
+      showToast('Copied '+lines.length+' pairs to clipboard');
+    }).catch(function(){fallbackCopy(text,lines.length);});
+  } else {
+    fallbackCopy(text,lines.length);
+  }
+}
+
+function fallbackCopy(text,count){
+  var ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  try{
+    document.execCommand('copy');
+    showToast('Copied '+count+' pairs to clipboard');
+  }catch(e){
+    showToast('Copy failed - see console',false);
+    console.log(text);
+  }
+  document.body.removeChild(ta);
+}
+
+function showToast(msg,ok){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  if(ok===false){t.style.background='#1a0707';t.style.color='#f87171';t.style.borderColor='#7a1515';}
+  else{t.style.background='#0f3020';t.style.color='#4ade80';t.style.borderColor='#155215';}
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2500);
+}
+
+function copyToTV(){
+  if(!results.length){alert('No qualifying pairs to copy.');return;}
+  // TradingView watchlist import format: EXCHANGE:SYMBOL one per line
+  var lines=results.map(function(r){return 'BINANCE:'+r.sym;});
+  var text=lines.join('\n');
+  var btn=document.getElementById('tvBtn');
+  // Copy to clipboard
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){
+      btn.textContent='&#10003; COPIED! Paste in TradingView';
+      btn.classList.add('copied');
+      setTimeout(function(){
+        btn.textContent='&#128203; COPY TO TRADINGVIEW';
+        btn.classList.remove('copied');
+      },3000);
+    }).catch(function(){fallbackCopy(text,btn);});
+  } else {
+    fallbackCopy(text,btn);
+  }
+}
+
+function fallbackCopy(text,btn){
+  // Fallback for older browsers / mobile
+  var ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.cssText='position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  try{
+    document.execCommand('copy');
+    btn.textContent='&#10003; COPIED! Paste in TradingView';
+    btn.classList.add('copied');
+    setTimeout(function(){
+      btn.textContent='&#128203; COPY TO TRADINGVIEW';
+      btn.classList.remove('copied');
+    },3000);
+  }catch(e){
+    alert('Copy failed. Here are your symbols:\n\n'+text);
+  }
+  document.body.removeChild(ta);
+}
 function toggleSide(){
   var s=document.getElementById('side');
   var btn=document.getElementById('sideToggle');
