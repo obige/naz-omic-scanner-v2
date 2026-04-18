@@ -151,11 +151,16 @@ function showMsg(text, ok) {
   setTimeout(function() { el.style.display = 'none'; }, 3000);
 }
 
-function api(path) {
+function api(path, method) {
   return fetch(WORKER + path, {
-    headers: {'X-Admin-Token': tok}
+    method: method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Token': tok
+    }
   }).then(function(r) {
-    if (r.status === 401) { showLogin('Session expired.'); throw new Error('unauth'); }
+    if (r.status === 401) { showLogin('Session expired. Please log in again.'); throw new Error('unauth'); }
+    if (!r.ok && r.status !== 200) { return r.json().then(function(d){ throw new Error(d.error || 'HTTP '+r.status); }); }
     return r.json();
   });
 }
