@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Naz Omic Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0d1a;color:#e0e0ff;font-family:'Courier New',monospace;padding:16px;font-size:13px}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+h1{color:#2dd4bf;font-size:16px}
+.logout{padding:6px 14px;background:#2a0a0a;border:1px solid #7a1515;color:#f87171;border-radius:6px;font-size:11px;font-family:monospace;cursor:pointer}
+.stats{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.stat{background:#13132b;border:1px solid #2a2a55;border-radius:8px;padding:10px 18px;text-align:center}
+.sn{font-size:22px;font-weight:700;color:#2dd4bf}
+.sl{font-size:10px;color:#5a5a90;margin-top:2px}
+#msg{padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;display:none}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:#13132b;border-radius:8px;min-width:700px}
+th{background:#1a1a35;padding:9px 10px;text-align:left;font-size:10px;color:#5a5a90;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #1a1a35;vertical-align:middle;white-space:nowrap}
+.gr{color:#4ade80}.rd{color:#f87171}.am{color:#fbbf24}
+.url{color:#60a5fa;font-size:10px;word-break:break-all;white-space:normal}
+.rbtn{padding:5px 14px;background:#2a0a0a;border:1px solid #7a1515;color:#f87171;border-radius:5px;cursor:pointer;font-family:monospace;font-size:11px}
+.gbtn{padding:5px 14px;background:#0a1a0a;border:1px solid #155215;color:#4ade80;border-radius:5px;cursor:pointer;font-family:monospace;font-size:11px}
+.sbtn{padding:5px 12px;background:#0a1a2a;border:1px solid #1a3a5a;color:#60a5fa;border-radius:5px;cursor:pointer;font-family:monospace;font-size:11px}
+.dinp{width:65px;padding:5px 7px;background:#1a1a35;border:1px solid #3a3a70;border-radius:4px;color:#e0e0ff;font-size:12px;font-family:monospace;outline:none}
+.dinp:focus{border-color:#2dd4bf}
+.drow{display:flex;gap:5px;align-items:center}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#13132b;border:1px solid #2a2a55;border-radius:12px;padding:32px;max-width:340px;width:100%;text-align:center}
+.logo{font-size:18px;font-weight:700;color:#2dd4bf;margin-bottom:6px}
+.sub{color:#9090c0;font-size:11px;margin-bottom:24px}
+.pinp{width:100%;padding:11px 14px;background:#1a1a35;border:1px solid #3a3a70;border-radius:8px;color:#e0e0ff;font-family:monospace;font-size:14px;letter-spacing:2px;margin-bottom:14px;outline:none}
+.pinp:focus{border-color:#2dd4bf}
+.lbtn{width:100%;padding:12px;background:#162850;color:#fff;border:1px solid #2a4888;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:monospace}
+.lbtn:hover{background:#1e3465}
+.errtxt{color:#f87171;font-size:12px;margin-bottom:14px;padding:8px;background:#1a0707;border-radius:6px;display:none}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginWrap">
+  <div class="card">
+    <div class="logo">Naz Omic Admin</div>
+    <div class="sub">Enter your admin password</div>
+    <div class="errtxt" id="loginErr">Wrong password. Try again.</div>
+    <input type="password" class="pinp" id="pwdInput" placeholder="Admin password" autocomplete="current-password">
+    <button class="lbtn" id="loginBtn">Login</button>
+  </div>
+</div>
+
+<div id="dashboard" style="display:none">
+  <div class="hdr">
+    <h1>Naz Omic Admin Dashboard</h1>
+    <button class="logout" id="logoutBtn">Logout</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="sn" id="nTotal">-</div><div class="sl">Total Users</div></div>
+    <div class="stat"><div class="sn" id="nActive">-</div><div class="sl">Active</div></div>
+    <div class="stat"><div class="sn" id="nRevoked">-</div><div class="sl">Revoked</div></div>
+  </div>
+  <div id="msg"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>GitHub User</th>
+          <th>Scanner URL</th>
+          <th>Registered</th>
+          <th>Expires</th>
+          <th>Status</th>
+          <th>Set Days</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="7" style="text-align:center;padding:24px;color:#5a5a90">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+var WORKER = 'https://naz-omic-proxy.omicpaker.workers.dev';
+var SK = 'naz_admin_tok';
+var tok = localStorage.getItem(SK) || '';
+
+function init() {
+  if (tok) { showDash(); load(); }
+}
+
+function showDash() {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+function showLogin(err) {
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  var e = document.getElementById('loginErr');
+  if (err) { e.textContent = err; e.style.display = 'block'; }
+  else { e.style.display = 'none'; }
+}
+
+document.getElementById('loginBtn').addEventListener('click', function() {
+  var pwd = document.getElementById('pwdInput').value.trim();
+  if (!pwd) return;
+  var btn = document.getElementById('loginBtn');
+  btn.textContent = 'Checking...'; btn.disabled = true;
+  fetch(WORKER + '/admin/verify', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({secret: pwd})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    btn.textContent = 'Login'; btn.disabled = false;
+    if (d.ok && d.token) {
+      tok = d.token;
+      localStorage.setItem(SK, tok);
+      document.getElementById('loginErr').style.display = 'none';
+      showDash(); load();
+    } else {
+      showLogin('Wrong password. Try again.');
+    }
+  })
+  .catch(function(e) {
+    btn.textContent = 'Login'; btn.disabled = false;
+    showLogin('Connection error: ' + e.message);
+  });
+});
+
+document.getElementById('pwdInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('loginBtn').click();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function() {
+  tok = ''; localStorage.removeItem(SK);
+  document.getElementById('pwdInput').value = '';
+  showLogin('');
+});
+
+function showMsg(text, ok) {
+  var el = document.getElementById('msg');
+  el.textContent = text;
+  el.style.cssText = 'display:block;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;'
+    + 'background:' + (ok ? '#071a07' : '#1a0707') + ';'
+    + 'color:' + (ok ? '#4ade80' : '#f87171') + ';'
+    + 'border:1px solid ' + (ok ? '#155215' : '#7a1515');
+  setTimeout(function() { el.style.display = 'none'; }, 3000);
+}
+
+function api(path) {
+  return fetch(WORKER + path, {
+    headers: {'X-Admin-Token': tok}
+  }).then(function(r) {
+    if (r.status === 401) { showLogin('Session expired.'); throw new Error('unauth'); }
+    return r.json();
+  });
+}
+
+function load() {
+  api('/admin/users').then(function(users) {
+    var now = Date.now();
+    var active = users.filter(function(u) { return !u.revoked; }).length;
+    document.getElementById('nTotal').textContent = users.length;
+    document.getElementById('nActive').textContent = active;
+    document.getElementById('nRevoked').textContent = users.length - active;
+
+    var tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+
+    if (!users.length) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 7;
+      td.style.cssText = 'text-align:center;padding:24px;color:#5a5a90';
+      td.textContent = 'No users yet.';
+      tr.appendChild(td); tbody.appendChild(tr); return;
+    }
+
+    users.forEach(function(u) {
+      var isExp = u.expiresAt && new Date(u.expiresAt).getTime() < now;
+      var sc = u.revoked ? 'rd' : isExp ? 'am' : 'gr';
+      var st = u.revoked ? (u.revokedReason === 'expired' ? 'Expired' : 'Revoked') : isExp ? 'Expired' : 'Active';
+
+      var expText = 'Unlimited', expColor = '#5a5a90';
+      if (u.expiresAt) {
+        var ms = new Date(u.expiresAt).getTime();
+        var dl = Math.ceil((ms - now) / 86400000);
+        expColor = dl <= 3 ? '#f87171' : dl <= 7 ? '#fbbf24' : '#9090c0';
+        expText = new Date(u.expiresAt).toLocaleDateString() + (dl > 0 ? ' (' + dl + 'd left)' : ' (Expired)');
+      }
+
+      var tr = document.createElement('tr');
+
+      // Username
+      var c1 = document.createElement('td');
+      c1.className = 'gr'; c1.textContent = '@' + u.username;
+      tr.appendChild(c1);
+
+      // URL
+      var c2 = document.createElement('td');
+      if (u.scannerUrl) {
+        var a = document.createElement('a');
+        a.href = u.scannerUrl; a.target = '_blank'; a.className = 'url';
+        a.textContent = u.scannerUrl; c2.appendChild(a);
+      } else { c2.style.color = '#5a5a90'; c2.textContent = 'Not deployed'; }
+      tr.appendChild(c2);
+
+      // Registered
+      var c3 = document.createElement('td');
+      c3.style.color = '#9090c0';
+      c3.textContent = u.registeredAt ? new Date(u.registeredAt).toLocaleDateString() : 'Unknown';
+      tr.appendChild(c3);
+
+      // Expires
+      var c4 = document.createElement('td');
+      c4.style.color = expColor; c4.textContent = expText;
+      tr.appendChild(c4);
+
+      // Status
+      var c5 = document.createElement('td');
+      c5.className = sc; c5.textContent = st;
+      tr.appendChild(c5);
+
+      // Set Days
+      var c6 = document.createElement('td');
+      var drow = document.createElement('div');
+      drow.className = 'drow';
+      var inp = document.createElement('input');
+      inp.type = 'number'; inp.className = 'dinp';
+      inp.min = '0'; inp.placeholder = 'days';
+      inp.value = u.expireDays ? String(u.expireDays) : '';
+      var sbtn = document.createElement('button');
+      sbtn.className = 'sbtn'; sbtn.textContent = 'Set';
+      (function(username, input) {
+        sbtn.addEventListener('click', function() {
+          var days = parseInt(input.value);
+          if (isNaN(days) || days < 0) { showMsg('Enter days (0 = unlimited)', false); return; }
+          api('/admin/setexpiry?username=' + username + '&days=' + days)
+          .then(function(d) {
+            if (d.ok) { showMsg('@' + username + ' — ' + (days > 0 ? days + ' days' : 'unlimited'), true); load(); }
+            else showMsg('Error: ' + (d.error || '?'), false);
+          }).catch(function(e) { if (e.message !== 'unauth') showMsg(e.message, false); });
+        });
+      })(u.username, inp);
+      drow.appendChild(inp); drow.appendChild(sbtn); c6.appendChild(drow);
+      tr.appendChild(c6);
+
+      // Action
+      var c7 = document.createElement('td');
+      var abtn = document.createElement('button');
+      if (u.revoked && u.revokedReason !== 'expired') {
+        abtn.className = 'gbtn'; abtn.textContent = 'Restore';
+        (function(un) { abtn.addEventListener('click', function() { doToggle(un, false); }); })(u.username);
+      } else {
+        abtn.className = 'rbtn'; abtn.textContent = 'Revoke';
+        (function(un) {
+          abtn.addEventListener('click', function() {
+            if (confirm('Revoke @' + un + '?')) doToggle(un, true);
+          });
+        })(u.username);
+      }
+      c7.appendChild(abtn); tr.appendChild(c7);
+      tbody.appendChild(tr);
+    });
+  }).catch(function(e) {
+    if (e.message !== 'unauth')
+      document.getElementById('tbody').innerHTML =
+        '<tr><td colspan="7" style="color:#f87171;text-align:center;padding:20px">Error: ' + e.message + '</td></tr>';
+  });
+}
+
+function doToggle(username, revoke) {
+  api('/admin/revoke?username=' + username + '&revoke=' + revoke)
+  .then(function(d) {
+    if (d.ok) { showMsg('@' + username + (revoke ? ' revoked' : ' restored'), !revoke); load(); }
+    else showMsg('Error: ' + (d.error || '?'), false);
+  }).catch(function(e) { if (e.message !== 'unauth') showMsg(e.message, false); });
+}
+
+init();
+</script>
+</body>
+</html>
