@@ -156,10 +156,14 @@ td{padding:6px 11px;font-size:12px;vertical-align:middle;white-space:nowrap}
 </div>
 <script>
 var WORKER='https://naz-omic-proxy.omicpaker.workers.dev';
+var USER_TOKEN='';
 var BAPI=WORKER+'/api/v3';
 
 function wfetch(path){
-  return fetch(BAPI+path).then(function(r){
+  // Append user token to every request
+  var sep=path.indexOf('?')>=0?'&':'?';
+  var url=BAPI+path+(USER_TOKEN?sep+'_t='+USER_TOKEN:'');
+  return fetch(url).then(function(r){
     if(!r.ok) return null;
     return r.json();
   }).catch(function(e){
