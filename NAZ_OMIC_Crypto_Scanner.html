@@ -210,15 +210,16 @@ function loadPairs(){
   setSt('Connecting to worker...');
   wfetch('/ping').then(function(ping){
     if(!ping){
-      setSt('Worker not responding');
+      setSt('Worker not responding - check token');
       setBadge('ERROR','b-err');
       allPairs=FALLBACK;
       document.getElementById('sPairs').textContent=allPairs.length+' (fallback)';
-      return;
+      return Promise.resolve(null);
     }
     setSt('Loading Binance USDT pairs...');
     return wfetch('/ticker/price');
   }).then(function(tickers){
+    if(tickers===null) return; // came from ping failure
     if(!tickers||!Array.isArray(tickers)){allPairs=FALLBACK;document.getElementById('sPairs').textContent=allPairs.length+' (fallback)';setSt('Using fallback list');return;}
     allPairs=tickers.map(function(t){return t.symbol;}).filter(function(s){
       return s.endsWith('USDT')&&
@@ -691,7 +692,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
 function toggleSide(){
   var s=document.getElementById('side');
-  var btn=document.getElementById('sideToggle');
+  var btn=document.getElementById('sideBtn');
   s.classList.toggle('collapsed');
   btn.style.color=s.classList.contains('collapsed')?'var(--teal)':'var(--text2)';
 }
