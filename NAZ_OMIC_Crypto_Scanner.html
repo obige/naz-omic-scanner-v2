@@ -151,7 +151,7 @@ td{padding:6px 11px;font-size:12.5px;vertical-align:middle;white-space:nowrap}
 </div>
 <script>
 var WORKER='https://naz-omic-proxy.omicpaker.workers.dev';
-var USER_TOKEN='naz_obige_nc9v0o0rlvgmo6s63z5';
+var USER_TOKEN='';
 var BAPI=WORKER+'/api/v3';
 
 function wfetch(path){
@@ -210,18 +210,18 @@ var allPairs=[];
 
 function loadPairs(){
   setSt('Connecting to worker...');
-  wfetch('/ping').then(function(ping){
+  // Skip ping check - go straight to loading pairs
+  // The ticker/price call itself confirms the worker is reachable
+  setSt('Loading Binance USDT pairs...');
+  wfetch('/ticker/price').then(function(tickers){
+    var ping = tickers !== null;
     if(!ping){
       setSt('Worker not responding - check token');
       setBadge('ERROR','b-err');
       allPairs=FALLBACK;
       document.getElementById('sPairs').textContent=allPairs.length+' (fallback)';
-      return Promise.resolve(null);
+      return;
     }
-    setSt('Loading Binance USDT pairs...');
-    return wfetch('/ticker/price');
-  }).then(function(tickers){
-    if(tickers===null) return; // came from ping failure
     if(!tickers||!Array.isArray(tickers)){allPairs=FALLBACK;document.getElementById('sPairs').textContent=allPairs.length+' (fallback)';setSt('Using fallback list');return;}
     allPairs=tickers.map(function(t){return t.symbol;}).filter(function(s){
       return s.endsWith('USDT')&&
@@ -501,8 +501,8 @@ function runDiag(){
     return '<div class="gline"><span class="gname">'+name+'</span><span class="'+cls+'">'+ic+'</span><span class="gval">'+v+(note?' | '+note:'')+'</span></div>';
   }
   var html='';
-  wfetch('/ping').then(function(ping){
-    html+=row('Worker ping',ping?'pass':'fail',ping?'Worker OK':'Worker not reachable');
+  wfetch('/ticker/price?symbol=BTCUSDT').then(function(ping){
+    html+=row('Worker ping',ping?'pass':'fail',ping?'Worker OK — token valid':'Worker not reachable — check token');
     content.innerHTML=html;
     if(!ping)return;
     content.innerHTML=html+'<div style="color:var(--amber);padding:4px 0">Fetching BTCUSDT data...</div>';
